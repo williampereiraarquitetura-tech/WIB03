@@ -6,19 +6,23 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "wib",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#050505",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#050505"
     },
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "backgroundColor": "#050505"
+    },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/icon.png",
+      "backgroundColor": "#050505"
     },
     "plugins": [
       [
@@ -28,7 +32,20 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "O WIB precisa acessar o microfone para gravar áudios dos seus projetos."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O WIB precisa acessar suas fotos para analisar imagens e prints.",
+          "cameraPermission": "O WIB precisa acessar a câmera para fotografar documentos e prints."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

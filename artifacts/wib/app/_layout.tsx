@@ -12,18 +12,36 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { setBaseUrl } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+// Set backend base URL
+setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: 1, staleTime: 30_000 },
+  },
+});
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: "#050505" },
+        animation: "slide_from_right",
+      }}
+    >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="inbox" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="tarefas" options={{ headerShown: false }} />
+      <Stack.Screen name="assistente" options={{ headerShown: false }} />
+      <Stack.Screen name="projeto/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="novo-projeto" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>
   );
 }
@@ -48,7 +66,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView>
+          <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
               <RootLayoutNav />
             </KeyboardProvider>

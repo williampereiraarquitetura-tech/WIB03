@@ -1,8 +1,24 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
+import healthRouter from "./health.js";
+import projectsRouter from "./projects.js";
+import peopleRouter from "./people.js";
+import tasksRouter from "./tasks.js";
+import inboxRouter from "./inbox.js";
+import uploadRouter from "./upload.js";
+import filesRouter from "./files.js";
+import timelineRouter from "./timeline.js";
+import aiRouter from "./ai.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use("/projects", projectsRouter);
+router.use("/people", peopleRouter);
+router.use("/tasks", tasksRouter);
+router.use("/inbox", inboxRouter);
+router.use("/upload", uploadRouter);
+router.use("/files", filesRouter);
+router.use("/timeline", timelineRouter);
+router.use(aiRouter);
 
 export default router;

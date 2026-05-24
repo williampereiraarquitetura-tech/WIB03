@@ -3,20 +3,33 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: WIB - Second Brain API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: projects
+    description: Project management
+  - name: people
+    description: People and contacts
+  - name: tasks
+    description: Task management
+  - name: inbox
+    description: Smart inbox
+  - name: files
+    description: File management
+  - name: timeline
+    description: Timeline events
+  - name: ai
+    description: AI features (chat, search, today)
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +37,375 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List all projects
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: priority
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectInput"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get project details
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update a project
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectInput"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /people:
+    get:
+      operationId: listPeople
+      tags: [people]
+      summary: List all people
+      parameters:
+        - in: query
+          name: role
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of people
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Person"
+    post:
+      operationId: createPerson
+      tags: [people]
+      summary: Create a person
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePersonInput"
+      responses:
+        "201":
+          description: Created person
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List tasks
+      parameters:
+        - in: query
+          name: projectId
+          schema:
+            type: integer
+        - in: query
+          name: priority
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: today
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskInput"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}:
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskInput"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /inbox:
+    get:
+      operationId: listInboxItems
+      tags: [inbox]
+      summary: List inbox items
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, confirmed, dismissed]
+      responses:
+        "200":
+          description: List of inbox items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InboxItem"
+
+  /inbox/{id}/confirm:
+    post:
+      operationId: confirmInboxItem
+      tags: [inbox]
+      summary: Confirm an inbox item and link to project/people
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmInboxInput"
+      responses:
+        "200":
+          description: Confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboxItem"
+
+  /inbox/{id}/dismiss:
+    post:
+      operationId: dismissInboxItem
+      tags: [inbox]
+      summary: Dismiss an inbox item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboxItem"
+
+  /files:
+    get:
+      operationId: listFiles
+      tags: [files]
+      summary: List files
+      parameters:
+        - in: query
+          name: projectId
+          schema:
+            type: integer
+        - in: query
+          name: fileType
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileRecord"
+
+  /timeline:
+    get:
+      operationId: listTimeline
+      tags: [timeline]
+      summary: Get timeline events
+      parameters:
+        - in: query
+          name: projectId
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Timeline events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimelineEvent"
+
+  /today:
+    get:
+      operationId: getToday
+      tags: [ai]
+      summary: Get today's AI summary and priorities
+      responses:
+        "200":
+          description: Today's summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodaySummary"
+
+  /chat:
+    post:
+      operationId: sendChat
+      tags: [ai]
+      summary: Chat with WIB assistant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+
+  /search:
+    get:
+      operationId: search
+      tags: [ai]
+      summary: Intelligent search across all data
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +413,354 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        clientName:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        priority:
+          type: string
+        description:
+          type: string
+        aiSummary:
+          type: string
+        progress:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, name, type, status, priority, createdAt]
+
+    ProjectDetail:
+      allOf:
+        - $ref: "#/components/schemas/Project"
+        - type: object
+          properties:
+            tasks:
+              type: array
+              items:
+                $ref: "#/components/schemas/Task"
+            people:
+              type: array
+              items:
+                $ref: "#/components/schemas/Person"
+            files:
+              type: array
+              items:
+                $ref: "#/components/schemas/FileRecord"
+            timeline:
+              type: array
+              items:
+                $ref: "#/components/schemas/TimelineEvent"
+          required: [tasks, people, files, timeline]
+
+    CreateProjectInput:
+      type: object
+      properties:
+        name:
+          type: string
+        clientName:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        priority:
+          type: string
+        description:
+          type: string
+      required: [name, type]
+
+    UpdateProjectInput:
+      type: object
+      properties:
+        name:
+          type: string
+        clientName:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        priority:
+          type: string
+        description:
+          type: string
+        progress:
+          type: integer
+
+    Person:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+        organization:
+          type: string
+        createdAt:
+          type: string
+      required: [id, name, role, createdAt]
+
+    CreatePersonInput:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+        organization:
+          type: string
+      required: [name, role]
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+        status:
+          type: string
+        dueDate:
+          type: string
+        createdAt:
+          type: string
+        projectName:
+          type: string
+      required: [id, title, priority, status, createdAt]
+
+    CreateTaskInput:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+        status:
+          type: string
+        dueDate:
+          type: string
+      required: [title, priority]
+
+    UpdateTaskInput:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+        status:
+          type: string
+        dueDate:
+          type: string
+
+    InboxItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        rawTranscription:
+          type: string
+        aiSuggestions:
+          $ref: "#/components/schemas/AISuggestions"
+        status:
+          type: string
+        fileUrl:
+          type: string
+        createdAt:
+          type: string
+      required: [id, type, title, status, createdAt]
+
+    AISuggestions:
+      type: object
+      properties:
+        contentType:
+          type: string
+        suggestedProject:
+          type: string
+        suggestedPeople:
+          type: array
+          items:
+            type: string
+        priority:
+          type: string
+        tasks:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+
+    ConfirmInboxInput:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        personId:
+          type: integer
+        createTasks:
+          type: boolean
+
+    FileRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        fileType:
+          type: string
+        url:
+          type: string
+        size:
+          type: integer
+        aiSummary:
+          type: string
+        createdAt:
+          type: string
+      required: [id, name, fileType, createdAt]
+
+    TimelineEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        projectName:
+          type: string
+        createdAt:
+          type: string
+      required: [id, type, title, createdAt]
+
+    TodaySummary:
+      type: object
+      properties:
+        aiSummary:
+          type: string
+        urgentTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        blockedProjects:
+          type: integer
+        pendingInbox:
+          type: integer
+        recentEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+      required: [urgentTasks, blockedProjects, pendingInbox, recentEvents]
+
+    ChatRequest:
+      type: object
+      properties:
+        message:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+      required: [message]
+
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+      required: [role, content]
+
+    ChatResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        suggestedActions:
+          type: array
+          items:
+            type: string
+      required: [message]
+
+    SearchResults:
+      type: object
+      properties:
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/Project"
+        people:
+          type: array
+          items:
+            $ref: "#/components/schemas/Person"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileRecord"
+        aiAnswer:
+          type: string
+      required: [projects, people, tasks, files]

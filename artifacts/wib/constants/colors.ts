@@ -1,59 +1,57 @@
-/**
- * Semantic design tokens for the mobile app.
- *
- * These tokens mirror the naming conventions used in web artifacts (index.css)
- * so that multi-artifact projects share a cohesive visual identity.
- *
- * Replace the placeholder values below with values that match the project's
- * brand. If a sibling web artifact exists, read its index.css and convert the
- * HSL values to hex so both artifacts use the same palette.
- *
- * To add dark mode, add a `dark` key with the same token names.
- * The useColors() hook will automatically pick it up.
- */
-
 const colors = {
-  light: {
-    // Legacy aliases (kept for backward compatibility)
-    text: "#0a0a0a",
-    tint: "#2f95dc",
+  dark: {
+    // Core backgrounds
+    background: "#050505",
+    surface: "#121414",
+    surfaceContainer: "#1e2020",
+    surfaceContainerHigh: "#282a2b",
+    surfaceContainerHighest: "#333535",
 
-    // Core surfaces
-    background: "#ffffff",
-    foreground: "#0a0a0a",
+    // Text
+    primary: "#ffffff",
+    onSurface: "#e2e2e2",
+    onSurfaceVariant: "#c5c9b1",
+    muted: "#8f937d",
 
-    // Cards / elevated surfaces
-    card: "#f9f9f9",
-    cardForeground: "#0a0a0a",
+    // Accent — lime green
+    lime: "#cbf157",
+    limeDim: "#afd43c",
+    onLime: "#161e00",
 
-    // Primary action color (buttons, links, active states)
-    primary: "#2f95dc",
-    primaryForeground: "#ffffff",
+    // Accent — purple
+    purple: "#6f00d1",
+    purpleLight: "#d9b9ff",
 
-    // Secondary / less-emphasis interactive surfaces
-    secondary: "#f0f0f0",
-    secondaryForeground: "#1a1a1a",
+    // Semantic
+    error: "#ffb4ab",
+    errorContainer: "#93000a",
+    success: "#cbf157",
 
-    // Muted / subdued elements (dividers, timestamps, placeholders)
-    muted: "#f0f0f0",
-    mutedForeground: "#737373",
+    // Glass card
+    card: "rgba(16, 16, 20, 0.6)",
+    cardBorder: "rgba(255, 255, 255, 0.15)",
 
-    // Accent highlights (badges, selected items, focus rings)
-    accent: "#f0f0f0",
-    accentForeground: "#1a1a1a",
+    // Navigation
+    navBg: "rgba(16, 16, 20, 0.8)",
+    navBorder: "rgba(255, 255, 255, 0.2)",
 
-    // Destructive actions (delete, error states)
-    destructive: "#ef4444",
-    destructiveForeground: "#ffffff",
-
-    // Borders and input outlines
-    border: "#e5e5e5",
-    input: "#e5e5e5",
+    // Aliases for useColors hook compatibility
+    text: "#e2e2e2",
+    tint: "#cbf157",
+    cardForeground: "#e2e2e2",
+    primaryForeground: "#161e00",
+    secondary: "#1e2020",
+    secondaryForeground: "#e2e2e2",
+    mutedForeground: "#8f937d",
+    accent: "#cbf157",
+    accentForeground: "#161e00",
+    destructive: "#ffb4ab",
+    destructiveForeground: "#050505",
+    border: "rgba(255,255,255,0.12)",
+    input: "rgba(255,255,255,0.08)",
   },
 
-  // Border radius (in px). Sync from the sibling web artifact's --radius
-  // CSS variable. This value applies to cards, buttons, inputs, and modals.
-  radius: 8,
+  radius: 16,
 };
 
 export default colors;

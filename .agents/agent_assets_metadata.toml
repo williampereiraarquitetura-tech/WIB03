@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "LU_46lg7ZGRriwBdFDKfT"
+uri = "file://artifacts/wib/assets/images/icon.png"
+type = "image"
+title = "wib-app-icon"
