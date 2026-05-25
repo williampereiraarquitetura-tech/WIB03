@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { TaskCard } from "@/components/TaskCard";
@@ -86,12 +86,15 @@ export default function TarefasScreen() {
           renderItem={({ item }) => (
             <TaskCard
               task={item}
-              onToggle={() =>
-                updateTask.mutate(
+              onToggle={async () => {
+                await updateTask.mutateAsync(
                   { id: item.id, data: { status: item.status === "concluida" ? "pendente" : "concluida" } },
-                  { onSuccess: () => qc.invalidateQueries({ queryKey: getListTasksQueryKey() }) }
-                )
-              }
+                ).catch((err) => {
+                  Alert.alert("Erro", `Não foi possível atualizar a tarefa.\n${err?.message ?? ""}`);
+                  throw err;
+                });
+                await qc.invalidateQueries({ queryKey: getListTasksQueryKey() });
+              }}
             />
           )}
           ListEmptyComponent={

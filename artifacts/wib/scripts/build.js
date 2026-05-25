@@ -55,20 +55,13 @@ function stripProtocol(domain) {
 }
 
 function getDeploymentDomain() {
-  if (process.env.REPLIT_INTERNAL_APP_DOMAIN) {
-    return stripProtocol(process.env.REPLIT_INTERNAL_APP_DOMAIN);
-  }
-
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    return stripProtocol(process.env.REPLIT_DEV_DOMAIN);
-  }
-
-  if (process.env.EXPO_PUBLIC_DOMAIN) {
-    return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || process.env.DEPLOYMENT_URL;
+  if (apiUrl) {
+    return stripProtocol(apiUrl);
   }
 
   console.error(
-    "ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN",
+    "ERROR: No deployment domain found. Set EXPO_PUBLIC_API_URL or DEPLOYMENT_URL (e.g. https://your-app.com)",
   );
   process.exit(1);
 }
@@ -123,11 +116,11 @@ async function checkMetroHealth() {
   }
 }
 
-function getExpoPublicReplId() {
-  return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID;
+function getExpoPublicBuildId() {
+  return process.env.EXPO_BUILD_ID || "";
 }
 
-async function startMetro(expoPublicDomain, expoPublicReplId) {
+async function startMetro(expoPublicDomain, buildId) {
   const isRunning = await checkMetroHealth();
   if (isRunning) {
     console.log("Metro already running");
@@ -135,16 +128,13 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
   }
 
   console.log("Starting Metro...");
-  console.log(`Setting EXPO_PUBLIC_DOMAIN=${expoPublicDomain}`);
+  const apiUrl = `https://${expoPublicDomain}`;
+  console.log(`Setting EXPO_PUBLIC_API_URL=${apiUrl}`);
   const env = {
     ...process.env,
-    EXPO_PUBLIC_DOMAIN: expoPublicDomain,
-    EXPO_PUBLIC_REPL_ID: expoPublicReplId,
+    EXPO_PUBLIC_API_URL: apiUrl,
+    ...(buildId ? { EXPO_BUILD_ID: buildId } : {}),
   };
-
-  if (expoPublicReplId) {
-    console.log(`Setting EXPO_PUBLIC_REPL_ID=${expoPublicReplId}`);
-  }
 
   metroProcess = spawn(
     "pnpm",
@@ -511,14 +501,14 @@ async function main() {
   setupSignalHandlers();
 
   const domain = getDeploymentDomain();
-  const expoPublicReplId = getExpoPublicReplId();
+  const buildId = getExpoPublicBuildId();
   const baseUrl = `https://${domain}`;
   const timestamp = `${Date.now()}-${process.pid}`;
 
   prepareDirectories(timestamp);
   clearMetroCache();
 
-  await startMetro(domain, expoPublicReplId);
+  await startMetro(domain, buildId);
 
   const downloadTimeout = 600000;
   const downloadPromise = downloadBundlesAndManifests(timestamp);

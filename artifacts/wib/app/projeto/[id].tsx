@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { GlassCard } from "@/components/GlassCard";
@@ -115,10 +115,15 @@ export default function ProjetoDetailScreen() {
             <TaskCard
               key={task.id}
               task={task}
-              onToggle={() => updateTask.mutate(
-                { id: task.id, data: { status: task.status === "concluida" ? "pendente" : "concluida" } },
-                { onSuccess: () => qc.invalidateQueries({ queryKey: getGetProjectQueryKey(project.id) }) }
-              )}
+              onToggle={async () => {
+                await updateTask.mutateAsync(
+                  { id: task.id, data: { status: task.status === "concluida" ? "pendente" : "concluida" } },
+                ).catch((err) => {
+                  Alert.alert("Erro", `Não foi possível atualizar a tarefa.\n${err?.message ?? ""}`);
+                  throw err;
+                });
+                await qc.invalidateQueries({ queryKey: getGetProjectQueryKey(project.id) });
+              }}
             />
           ))}
         </View>

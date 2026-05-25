@@ -6,18 +6,7 @@ import { getOpenAIClient } from "../services/openaiClient.js";
 
 const router = Router();
 
-interface TodayCache {
-  data: object;
-  expiresAt: number;
-}
-let todayCache: TodayCache | null = null;
-const TODAY_CACHE_TTL_MS = 30 * 1000;
-
 router.get("/today", async (req, res) => {
-  if (todayCache && Date.now() < todayCache.expiresAt) {
-    res.json(todayCache.data);
-    return;
-  }
   const [urgentTasks, pendingInboxCount, recentEvents, blockedProjects] = await Promise.all([
     db.select({ task: tasksTable, projectName: projectsTable.name })
       .from(tasksTable)
@@ -87,7 +76,6 @@ Tarefas urgentes: ${urgentOnly.map(({ task }) => task.title).join(", ") || "nenh
     })),
   };
 
-  todayCache = { data: payload, expiresAt: Date.now() + TODAY_CACHE_TTL_MS };
   res.json(payload);
 });
 

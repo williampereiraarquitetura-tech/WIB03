@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
+    "dev": "pnpm run build && node --enable-source-maps --env-file=../../.env ./dist/index.mjs",
     "build": "node ./build.mjs",
-    "start": "node --enable-source-maps ./dist/index.mjs",
+    "start": "node --enable-source-maps --env-file=../../.env ./dist/index.mjs",
+    "db:migrate": "drizzle-kit push",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -17,6 +18,7 @@
     "cors": "^2.8.6",
     "drizzle-orm": "catalog:",
     "express": "^5.2.1",
+    "googleapis": "^172.0.0",
     "multer": "^2.1.1",
     "openai": "^6.39.0",
     "pdf-parse": "^2.4.5",

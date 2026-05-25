@@ -6,14 +6,26 @@ import { z } from "zod";
 
 const router = Router();
 
+// Inbox statuses:
+// pending_processing → AI is queued
+// processing         → AI is running
+// needs_review       → AI done, waiting for user action
+// confirmed          → user confirmed / acted on item
+// dismissed          → user dismissed without action
+// failed             → AI processing failed
+
 router.get("/", async (req, res) => {
   const { status } = req.query;
-  const rows = await db.select().from(inboxItemsTable).orderBy(desc(inboxItemsTable.createdAt)).limit(50);
 
-  const filtered = rows.filter((item) => {
-    if (status && item.status !== status) return false;
-    return true;
-  });
+  const rows = await db
+    .select()
+    .from(inboxItemsTable)
+    .orderBy(desc(inboxItemsTable.createdAt))
+    .limit(50);
+
+  const filtered = status
+    ? rows.filter((item) => item.status === status)
+    : rows;
 
   res.json(
     filtered.map((item) => ({
@@ -31,8 +43,8 @@ router.get("/", async (req, res) => {
 });
 
 const confirmSchema = z.object({
-  projectId: z.number().optional(),
-  personId: z.number().optional(),
+  projectId: z.number().int().positive().optional(),
+  personId: z.number().int().positive().optional(),
   createTasks: z.boolean().optional(),
 });
 
@@ -44,6 +56,13 @@ router.post("/:id/confirm", async (req, res) => {
   }
 
   const parsed = confirmSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Corpo da requisição inválido",
+      details: parsed.error.flatten(),
+    });
+    return;
+  }
 
   const [item] = await db.select().from(inboxItemsTable).where(eq(inboxItemsTable.id, id));
   if (!item) {
@@ -51,16 +70,14 @@ router.post("/:id/confirm", async (req, res) => {
     return;
   }
 
+  const { projectId, createTasks } = parsed.data;
   const suggestions = item.aiSuggestions as { tasks?: string[]; priority?: string } | null;
 
-  if (parsed.success && parsed.data.createTasks) {
-    const taskTitles = suggestions?.tasks?.length
-      ? suggestions.tasks
-      : [item.title];
-
+  if (createTasks) {
+    const taskTitles = suggestions?.tasks?.length ? suggestions.tasks : [item.title];
     for (const taskTitle of taskTitles) {
       await db.insert(tasksTable).values({
-        projectId: parsed.data.projectId ?? null,
+        projectId: projectId ?? null,
         title: taskTitle,
         priority: suggestions?.priority ?? "importante",
         status: "pendente",
@@ -68,9 +85,9 @@ router.post("/:id/confirm", async (req, res) => {
     }
   }
 
-  if (parsed.success && parsed.data.projectId) {
+  if (projectId) {
     await db.insert(timelineEventsTable).values({
-      projectId: parsed.data.projectId,
+      projectId,
       type: item.type === "audio" ? "audio_enviado" : "arquivo_analisado",
       title: item.title,
       description: item.content?.slice(0, 200),

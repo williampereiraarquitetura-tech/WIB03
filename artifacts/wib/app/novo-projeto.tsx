@@ -6,7 +6,7 @@ import { useCreateProject } from "@workspace/api-client-react";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { Platform } from "react-native";
-import { KeyboardAwareScrollViewCompat } from "react-native-keyboard-controller";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import * as Haptics from "expo-haptics";
 
 const PROJECT_TYPES = ["viabilidade", "aprovacao_municipal", "aprovacao_estadual", "graprohab", "projeto_urbanistico", "incorporacao", "regularizacao", "loteamento", "desmembramento", "consulta_previa"];

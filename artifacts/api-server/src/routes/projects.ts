@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
-import { filesTable, insertProjectSchema, peopleTable, projectsTable, tasksTable, timelineEventsTable } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { filesTable, insertProjectSchema, peopleTable, projectPeopleTable, projectsTable, tasksTable, timelineEventsTable } from "@workspace/db/schema";
+import { eq, desc, and, SQL } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 
@@ -8,17 +8,19 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   const { status, priority } = req.query;
-  let query = db.select().from(projectsTable).orderBy(desc(projectsTable.updatedAt));
 
-  const rows = await query;
-  const filtered = rows.filter((p) => {
-    if (status && p.status !== status) return false;
-    if (priority && p.priority !== priority) return false;
-    return true;
-  });
+  const conditions: SQL[] = [];
+  if (status) conditions.push(eq(projectsTable.status, status as string));
+  if (priority) conditions.push(eq(projectsTable.priority, priority as string));
+
+  const rows = await db
+    .select()
+    .from(projectsTable)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(projectsTable.updatedAt));
 
   res.json(
-    filtered.map((p) => ({
+    rows.map((p) => ({
       id: p.id,
       name: p.name,
       clientName: p.clientName,
@@ -78,10 +80,15 @@ router.get("/:id", async (req, res) => {
     return;
   }
 
-  const [tasks, files, timeline] = await Promise.all([
+  const [tasks, files, timeline, projectPeople] = await Promise.all([
     db.select().from(tasksTable).where(eq(tasksTable.projectId, id)).orderBy(desc(tasksTable.createdAt)),
     db.select().from(filesTable).where(eq(filesTable.projectId, id)).orderBy(desc(filesTable.createdAt)),
     db.select().from(timelineEventsTable).where(eq(timelineEventsTable.projectId, id)).orderBy(desc(timelineEventsTable.createdAt)).limit(20),
+    db
+      .select({ person: peopleTable })
+      .from(projectPeopleTable)
+      .innerJoin(peopleTable, eq(projectPeopleTable.personId, peopleTable.id))
+      .where(eq(projectPeopleTable.projectId, id)),
   ]);
 
   res.json({
@@ -106,7 +113,15 @@ router.get("/:id", async (req, res) => {
       dueDate: t.dueDate,
       createdAt: t.createdAt.toISOString(),
     })),
-    people: [],
+    people: projectPeople.map(({ person }) => ({
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      phone: person.phone,
+      role: person.role,
+      organization: person.organization,
+      createdAt: person.createdAt.toISOString(),
+    })),
     files: files.map((f) => ({
       id: f.id,
       projectId: f.projectId,

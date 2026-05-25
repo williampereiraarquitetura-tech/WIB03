@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+import { API_URL } from "@/config/api";
 
 export interface UploadResult {
   id: number;
@@ -26,7 +25,7 @@ export function useUpload() {
       formData.append("file", { uri, name: fileName, type: mimeType } as any);
       if (projectId) formData.append("projectId", String(projectId));
 
-      const resp = await fetch(`${BASE}/api/upload`, {
+      const resp = await fetch(`${API_URL}/api/upload`, {
         method: "POST",
         body: formData,
       });

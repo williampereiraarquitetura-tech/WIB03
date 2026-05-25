@@ -49,6 +49,7 @@ const colors = {
     destructiveForeground: "#050505",
     border: "rgba(255,255,255,0.12)",
     input: "rgba(255,255,255,0.08)",
+    foreground: "#e2e2e2",
   },
 
   radius: 16,

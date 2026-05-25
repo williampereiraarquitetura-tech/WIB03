@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import * as Haptics from "expo-haptics";
+import { API_URL } from "@/config/api";
 
 interface ChatMessage {
   id: string;
@@ -20,8 +21,6 @@ const SUGGESTIONS = [
   "Resuma o status dos projetos",
   "Quais projetos estão bloqueados?",
 ];
-
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
 export default function AssistenteScreen() {
   const colors = useColors();
@@ -47,7 +46,7 @@ export default function AssistenteScreen() {
 
     try {
       const history = newMessages.slice(0, -1).map((m) => ({ role: m.role, content: m.content }));
-      const resp = await fetch(`${BASE}/api/chat`, {
+      const resp = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg, history }),

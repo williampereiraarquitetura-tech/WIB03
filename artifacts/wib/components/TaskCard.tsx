@@ -1,5 +1,5 @@
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { GlassCard } from "./GlassCard";
 import { PriorityBadge } from "./PriorityBadge";
@@ -16,26 +16,57 @@ interface TaskCardProps {
     projectName?: string | null;
     dueDate?: string | null;
   };
-  onToggle?: () => void;
+  onToggle?: () => Promise<void> | void;
 }
 
 export function TaskCard({ task, onToggle }: TaskCardProps) {
   const colors = useColors();
-  const isDone = task.status === "concluida";
+  const [optimisticDone, setOptimisticDone] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleToggle = () => {
+  const isDone = optimisticDone !== null ? optimisticDone : task.status === "concluida";
+
+  const handleToggle = async () => {
+    if (loading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onToggle?.();
+    const next = !isDone;
+    setOptimisticDone(next);
+    setLoading(true);
+    try {
+      await onToggle?.();
+    } catch {
+      // Revert on error
+      setOptimisticDone(!next);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <GlassCard style={styles.card}>
       <View style={styles.row}>
-        <TouchableOpacity onPress={handleToggle} style={[styles.checkbox, { borderColor: isDone ? colors.lime : colors.border }]}>
-          {isDone && <Feather name="check" size={12} color={colors.lime} />}
+        <TouchableOpacity
+          onPress={handleToggle}
+          disabled={loading}
+          style={[
+            styles.checkbox,
+            { borderColor: isDone ? colors.lime : colors.border, backgroundColor: isDone ? colors.lime + "20" : "transparent" },
+          ]}
+        >
+          {loading ? (
+            <ActivityIndicator size={10} color={colors.lime} />
+          ) : isDone ? (
+            <Feather name="check" size={12} color={colors.lime} />
+          ) : null}
         </TouchableOpacity>
         <View style={styles.content}>
-          <Text style={[styles.title, { color: isDone ? colors.muted : colors.onSurface, textDecorationLine: isDone ? "line-through" : "none" }]} numberOfLines={2}>
+          <Text
+            style={[
+              styles.title,
+              { color: isDone ? colors.muted : colors.onSurface, textDecorationLine: isDone ? "line-through" : "none" },
+            ]}
+            numberOfLines={2}
+          >
             {task.title}
           </Text>
           {task.projectName ? (
@@ -55,8 +86,8 @@ const styles = StyleSheet.create({
   card: { padding: 14, marginBottom: 8 },
   row: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   checkbox: {
-    width: 20,
-    height: 20,
+    width: 22,
+    height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
     alignItems: "center",

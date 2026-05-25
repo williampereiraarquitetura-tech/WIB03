@@ -1,32 +1,28 @@
 import { db } from "@workspace/db";
 import { insertTaskSchema, projectsTable, tasksTable, timelineEventsTable } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, SQL } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const { projectId, priority, status, today } = req.query;
+  const { projectId, priority, status } = req.query;
+
+  const conditions: SQL[] = [];
+  if (projectId) conditions.push(eq(tasksTable.projectId, parseInt(projectId as string)));
+  if (priority) conditions.push(eq(tasksTable.priority, priority as string));
+  if (status) conditions.push(eq(tasksTable.status, status as string));
 
   const rows = await db
-    .select({
-      task: tasksTable,
-      projectName: projectsTable.name,
-    })
+    .select({ task: tasksTable, projectName: projectsTable.name })
     .from(tasksTable)
     .leftJoin(projectsTable, eq(tasksTable.projectId, projectsTable.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(tasksTable.createdAt));
 
-  const filtered = rows.filter(({ task }) => {
-    if (projectId && task.projectId !== parseInt(projectId as string)) return false;
-    if (priority && task.priority !== priority) return false;
-    if (status && task.status !== status) return false;
-    return true;
-  });
-
   res.json(
-    filtered.map(({ task, projectName }) => ({
+    rows.map(({ task, projectName }) => ({
       id: task.id,
       projectId: task.projectId,
       projectName: projectName ?? undefined,

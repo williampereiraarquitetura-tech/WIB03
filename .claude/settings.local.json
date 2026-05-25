@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\gotas\\\\Desktop\\\\WIB03\" -Force | Select-Object Name, @{Label=\"Type\"; Expression={if\\($_.PSIsContainer\\){\"Dir\"}else{\"File\"}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\gotas\\\\Desktop\\\\WIB03\" | Where-Object {$_.PSIsContainer} | Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\gotas\\\\Desktop\\\\WIB03\\\\artifacts\" | Select-Object Name, @{Label=\"Type\"; Expression={if\\($_.PSIsContainer\\){\"Dir\"}else{\"File\"}}})",
+      "Bash(pnpm install *)",
+      "Bash(pnpm approve-builds *)",
+      "Bash(pnpm run *)",
+      "Bash(node --enable-source-maps --env-file=.env dist/index.mjs)",
+      "Bash(node --enable-source-maps --env-file=../../.env dist/index.mjs)",
+      "Bash(curl -s http://localhost:3000/api/healthz)",
+      "Bash(Test-Path \"c:\\\\Users\\\\gotas\\\\Desktop\\\\WIB03\\\\.env\")",
+      "PowerShell(Copy-Item \"c:\\\\Users\\\\gotas\\\\Desktop\\\\WIB03\\\\.env.example\" \"c:\\\\Users\\\\gotas\\\\Desktop\\\\WIB03\\\\.env\")",
+      "Bash(timeout 30 pnpm exec expo export --platform web --output-dir /tmp/wib-web-test)",
+      "Bash(grep \"^expo$\")",
+      "Bash(pnpm add *)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

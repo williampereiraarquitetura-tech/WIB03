@@ -9,6 +9,7 @@ export const filesTable = pgTable("files", {
   name: text("name").notNull(),
   fileType: text("file_type").notNull(),
   url: text("url").notNull(),
+  driveFileId: text("drive_file_id"),
   size: integer("size"),
   aiSummary: text("ai_summary"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

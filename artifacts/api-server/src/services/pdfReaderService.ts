@@ -3,7 +3,8 @@ import { getOpenAIClient } from "./openaiClient.js";
 
 async function extractTextFromPdf(filePath: string): Promise<string> {
   try {
-    const { default: pdfParse } = await import("pdf-parse/lib/pdf-parse.js");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { default: pdfParse } = await import("pdf-parse" as any);
     const buffer = fs.readFileSync(filePath);
     const data = await pdfParse(buffer);
     return data.text;
