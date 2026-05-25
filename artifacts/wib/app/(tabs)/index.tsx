@@ -86,11 +86,13 @@ export default function HojeScreen() {
             </GlassCard>
           ) : null}
 
-          {/* Urgent Tasks */}
+          {/* All Pending Tasks */}
           {today?.urgentTasks && today.urgentTasks.length > 0 ? (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.muted }]}>PRIORIDADES</Text>
+                <Text style={[styles.sectionTitle, { color: colors.muted }]}>
+                  PENDÊNCIAS ({today.urgentTasks.length})
+                </Text>
                 <TouchableOpacity onPress={() => router.push("/tarefas")}>
                   <Text style={[styles.seeAll, { color: colors.lime }]}>Ver todas</Text>
                 </TouchableOpacity>

@@ -11,7 +11,7 @@ interface TodayCache {
   expiresAt: number;
 }
 let todayCache: TodayCache | null = null;
-const TODAY_CACHE_TTL_MS = 5 * 60 * 1000;
+const TODAY_CACHE_TTL_MS = 30 * 1000;
 
 router.get("/today", async (req, res) => {
   if (todayCache && Date.now() < todayCache.expiresAt) {
@@ -24,7 +24,7 @@ router.get("/today", async (req, res) => {
       .leftJoin(projectsTable, eq(tasksTable.projectId, projectsTable.id))
       .where(eq(tasksTable.status, "pendente"))
       .orderBy(desc(tasksTable.createdAt))
-      .limit(5),
+      .limit(20),
     db.select().from(inboxItemsTable).where(eq(inboxItemsTable.status, "pending")),
     db.select({ event: timelineEventsTable, projectName: projectsTable.name })
       .from(timelineEventsTable)
@@ -34,9 +34,7 @@ router.get("/today", async (req, res) => {
     db.select().from(projectsTable).where(eq(projectsTable.status, "bloqueado")),
   ]);
 
-  const urgentOnly = urgentTasks
-    .filter(({ task }) => ["urgente", "importante"].includes(task.priority))
-    .slice(0, 5);
+  const urgentOnly = urgentTasks.slice(0, 20);
 
   let aiSummary = "";
   try {

@@ -1,13 +1,11 @@
 import React, { useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { PersonCard } from "@/components/PersonCard";
 import { useListPeople, useCreatePerson } from "@workspace/api-client-react";
 import { Feather } from "@expo/vector-icons";
-import { Platform } from "react-native";
 import { Modal } from "react-native";
-import { KeyboardAwareScrollViewCompat } from "react-native-keyboard-controller";
 import * as Haptics from "expo-haptics";
 
 const ROLES = ["cliente", "tecnico", "parceiro", "prefeitura", "cartorio", "orgao_publico", "fornecedor"];
@@ -73,7 +71,8 @@ export default function PessoasScreen() {
 
       {/* Add Person Modal */}
       <Modal visible={showAdd} animationType="slide" presentationStyle="pageSheet">
-        <KeyboardAwareScrollViewCompat style={[styles.modal, { backgroundColor: colors.surface }]} keyboardShouldPersistTaps="handled" bottomOffset={20}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView style={[styles.modal, { backgroundColor: colors.surface }]} keyboardShouldPersistTaps="handled">
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.onSurface }]}>Nova Pessoa</Text>
             <TouchableOpacity onPress={() => setShowAdd(false)}><Feather name="x" size={22} color={colors.muted} /></TouchableOpacity>
@@ -120,7 +119,8 @@ export default function PessoasScreen() {
               {createPerson.isPending ? <ActivityIndicator color={colors.onLime} /> : <Text style={[styles.saveBtnText, { color: colors.onLime }]}>Salvar</Text>}
             </TouchableOpacity>
           </View>
-        </KeyboardAwareScrollViewCompat>
+        </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
