@@ -53,12 +53,16 @@ router.post("/:id/confirm", async (req, res) => {
 
   const suggestions = item.aiSuggestions as { tasks?: string[]; priority?: string } | null;
 
-  if (parsed.success && parsed.data.createTasks && suggestions?.tasks && parsed.data.projectId) {
-    for (const taskTitle of suggestions.tasks) {
+  if (parsed.success && parsed.data.createTasks) {
+    const taskTitles = suggestions?.tasks?.length
+      ? suggestions.tasks
+      : [item.title];
+
+    for (const taskTitle of taskTitles) {
       await db.insert(tasksTable).values({
-        projectId: parsed.data.projectId,
+        projectId: parsed.data.projectId ?? null,
         title: taskTitle,
-        priority: suggestions.priority ?? "importante",
+        priority: suggestions?.priority ?? "importante",
         status: "pendente",
       });
     }

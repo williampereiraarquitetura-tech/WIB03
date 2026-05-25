@@ -51,7 +51,12 @@ export default function InboxScreen() {
           renderItem={({ item }) => (
             <InboxCard
               item={item as any}
-              onConfirm={() => confirm.mutate({ id: item.id, data: { createTasks: true } }, { onSuccess: invalidate })}
+              onConfirm={(projectId) =>
+                confirm.mutate(
+                  { id: item.id, data: { createTasks: true, projectId } },
+                  { onSuccess: invalidate }
+                )
+              }
               onDismiss={() => dismiss.mutate({ id: item.id }, { onSuccess: invalidate })}
             />
           )}
