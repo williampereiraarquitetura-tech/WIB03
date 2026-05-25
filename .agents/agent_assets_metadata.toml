@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "LU_46lg7ZGRriwBdFDKfT"
 uri = "file://artifacts/wib/assets/images/icon.png"
 type = "image"
 title = "wib-app-icon"
+
+[[outputs]]
+id = "ECye1WDlpUv7Odb6bmDOJ"
+uri = "file://wib-project.tar.gz"
+type = "unspecified"
+title = "WIB — Código-fonte completo (.tar.gz)"
