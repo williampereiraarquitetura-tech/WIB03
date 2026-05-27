@@ -1,7 +1,8 @@
 import { db } from "@workspace/db";
 import { insertPersonSchema, peopleTable } from "@workspace/db/schema";
-import { ilike, desc } from "drizzle-orm";
+import { ilike, desc, eq } from "drizzle-orm";
 import { Router } from "express";
+import { z } from "zod";
 
 const router = Router();
 
@@ -49,6 +50,37 @@ router.post("/", async (req, res) => {
     organization: person!.organization,
     createdAt: person!.createdAt.toISOString(),
   });
+});
+
+const updatePersonSchema = z.object({
+  name: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  role: z.string().optional(),
+  organization: z.string().optional(),
+});
+
+router.patch("/:id", async (req, res) => {
+  const id = parseInt(req.params["id"]!);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const parsed = updatePersonSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Dados inválidos" }); return; }
+
+  const [person] = await db.update(peopleTable).set(parsed.data).where(eq(peopleTable.id, id)).returning();
+  if (!person) { res.status(404).json({ error: "Pessoa não encontrada" }); return; }
+
+  res.json({ id: person.id, name: person.name, email: person.email, phone: person.phone, role: person.role, organization: person.organization, createdAt: person.createdAt.toISOString() });
+});
+
+router.delete("/:id", async (req, res) => {
+  const id = parseInt(req.params["id"]!);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [person] = await db.delete(peopleTable).where(eq(peopleTable.id, id)).returning();
+  if (!person) { res.status(404).json({ error: "Pessoa não encontrada" }); return; }
+
+  res.status(204).end();
 });
 
 export default router;

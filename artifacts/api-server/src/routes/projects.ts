@@ -201,4 +201,14 @@ router.patch("/:id", async (req, res) => {
   });
 });
 
+router.delete("/:id", async (req, res) => {
+  const id = parseInt(req.params["id"]!);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [project] = await db.delete(projectsTable).where(eq(projectsTable.id, id)).returning();
+  if (!project) { res.status(404).json({ error: "Projeto não encontrado" }); return; }
+
+  res.status(204).end();
+});
+
 export default router;

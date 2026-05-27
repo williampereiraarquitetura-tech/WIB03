@@ -6,7 +6,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { TaskCard } from "@/components/TaskCard";
 import { TimelineItem } from "@/components/TimelineItem";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useGetProject, useUpdateTask, getGetProjectQueryKey } from "@workspace/api-client-react";
+import { useGetProject, useUpdateTask, useDeleteProject, getGetProjectQueryKey, getListProjectsQueryKey } from "@workspace/api-client-react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { Platform } from "react-native";
@@ -29,6 +29,24 @@ export default function ProjetoDetailScreen() {
 
   const { data: project, isLoading } = useGetProject(parseInt(id!));
   const updateTask = useUpdateTask();
+  const deleteProject = useDeleteProject();
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Excluir projeto",
+      `Deseja excluir "${project?.name}"? Todas as tarefas e arquivos vinculados serão removidos.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir", style: "destructive", onPress: async () => {
+            await deleteProject.mutateAsync({ id: parseInt(id!) });
+            qc.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+            router.back();
+          }
+        },
+      ]
+    );
+  };
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -45,10 +63,15 @@ export default function ProjetoDetailScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={[styles.content, { paddingTop: topPad + 16, paddingBottom: botPad + 40 }]} showsVerticalScrollIndicator={false}>
-      {/* Back */}
-      <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-        <Feather name="arrow-left" size={22} color={colors.onSurface} />
-      </TouchableOpacity>
+      {/* Back + Delete */}
+      <View style={styles.topRow}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={22} color={colors.onSurface} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleDelete} style={[styles.deleteBtn, { backgroundColor: colors.surfaceContainer }]}>
+          <Feather name="trash-2" size={18} color={colors.error} />
+        </TouchableOpacity>
+      </View>
 
       {/* Header */}
       <View style={styles.projectHeader}>
@@ -163,7 +186,9 @@ export default function ProjetoDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 20 },
-  backBtn: { padding: 4, marginBottom: 16 },
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  backBtn: { padding: 4 },
+  deleteBtn: { padding: 10, borderRadius: 10 },
   projectHeader: { gap: 6, marginBottom: 16 },
   typeLabel: { fontSize: 12, fontWeight: "600" as const, letterSpacing: 0.5 },
   name: { fontSize: 28, fontWeight: "700" as const, letterSpacing: -0.3, lineHeight: 34 },

@@ -3,7 +3,8 @@ import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, RefreshCon
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { PersonCard } from "@/components/PersonCard";
-import { useListPeople, useCreatePerson } from "@workspace/api-client-react";
+import { useListPeople, useCreatePerson, useUpdatePerson, useDeletePerson, getListPeopleQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
 import { Modal } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -17,24 +18,46 @@ const ROLE_LABELS: Record<string, string> = {
 export default function PessoasScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", role: "cliente", organization: "" });
 
   const { data: people, isLoading, refetch } = useListPeople({ search: search || undefined });
   const createPerson = useCreatePerson();
+  const updatePerson = useUpdatePerson();
+  const deletePerson = useDeletePerson();
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: getListPeopleQueryKey() });
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const handleCreate = async () => {
+  const resetForm = () => { setForm({ name: "", email: "", phone: "", role: "cliente", organization: "" }); setEditingId(null); setShowAdd(false); };
+
+  const handleSave = async () => {
     if (!form.name.trim()) return;
-    await createPerson.mutateAsync({ data: { name: form.name, email: form.email || undefined, phone: form.phone || undefined, role: form.role, organization: form.organization || undefined } });
+    if (editingId) {
+      await updatePerson.mutateAsync({ id: editingId, data: { name: form.name, email: form.email || undefined, phone: form.phone || undefined, role: form.role, organization: form.organization || undefined } });
+    } else {
+      await createPerson.mutateAsync({ data: { name: form.name, email: form.email || undefined, phone: form.phone || undefined, role: form.role, organization: form.organization || undefined } });
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    refetch();
-    setShowAdd(false);
-    setForm({ name: "", email: "", phone: "", role: "cliente", organization: "" });
+    invalidate();
+    resetForm();
+  };
+
+  const handleEdit = (person: NonNullable<typeof people>[number]) => {
+    setForm({ name: person.name, email: person.email ?? "", phone: person.phone ?? "", role: person.role, organization: person.organization ?? "" });
+    setEditingId(person.id);
+    setShowAdd(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    await deletePerson.mutateAsync({ id });
+    invalidate();
   };
 
   return (
@@ -58,7 +81,7 @@ export default function PessoasScreen() {
           keyExtractor={(p) => String(p.id)}
           contentContainerStyle={[styles.list, { paddingBottom: botPad + 100 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await refetch(); setRefreshing(false); }} tintColor={colors.lime} />}
-          renderItem={({ item }) => <PersonCard person={item} />}
+          renderItem={({ item }) => <PersonCard person={item} onEdit={() => handleEdit(item)} onDelete={() => handleDelete(item.id)} />}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Feather name="users" size={40} color={colors.muted} />
@@ -74,8 +97,8 @@ export default function PessoasScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <ScrollView style={[styles.modal, { backgroundColor: colors.surface }]} keyboardShouldPersistTaps="handled">
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.onSurface }]}>Nova Pessoa</Text>
-            <TouchableOpacity onPress={() => setShowAdd(false)}><Feather name="x" size={22} color={colors.muted} /></TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: colors.onSurface }]}>{editingId ? "Editar Pessoa" : "Nova Pessoa"}</Text>
+            <TouchableOpacity onPress={resetForm}><Feather name="x" size={22} color={colors.muted} /></TouchableOpacity>
           </View>
           <View style={styles.form}>
             {[
@@ -111,12 +134,12 @@ export default function PessoasScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.saveBtn, { backgroundColor: colors.lime, opacity: createPerson.isPending ? 0.6 : 1 }]}
-              onPress={handleCreate}
-              disabled={createPerson.isPending}
+              style={[styles.saveBtn, { backgroundColor: colors.lime, opacity: (createPerson.isPending || updatePerson.isPending) ? 0.6 : 1 }]}
+              onPress={handleSave}
+              disabled={createPerson.isPending || updatePerson.isPending}
               activeOpacity={0.85}
             >
-              {createPerson.isPending ? <ActivityIndicator color={colors.onLime} /> : <Text style={[styles.saveBtnText, { color: colors.onLime }]}>Salvar</Text>}
+              {(createPerson.isPending || updatePerson.isPending) ? <ActivityIndicator color={colors.onLime} /> : <Text style={[styles.saveBtnText, { color: colors.onLime }]}>Salvar</Text>}
             </TouchableOpacity>
           </View>
         </ScrollView>
