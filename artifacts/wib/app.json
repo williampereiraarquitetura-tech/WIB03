@@ -18,7 +18,12 @@
       "supportsTablet": false
     },
     "android": {
-      "backgroundColor": "#050505"
+      "backgroundColor": "#050505",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "com.wibbrain.wib"
     },
     "web": {
       "favicon": "./assets/images/icon.png",
@@ -47,6 +52,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2e6c25ac-739c-4680-b966-52f631cae5c4"
+      }
     }
   }
 }

@@ -15,11 +15,10 @@ function getDrive(): drive_v3.Drive {
 
   let credentials: object;
   try {
-    // Accept either the raw JSON string or a base64-encoded version
-    const decoded = Buffer.from(keyRaw, "base64").toString("utf-8");
-    credentials = JSON.parse(decoded.startsWith("{") ? decoded : keyRaw);
+    const decoded = Buffer.from(keyRaw.trim(), "base64").toString("utf-8").trim();
+    credentials = JSON.parse(decoded);
   } catch {
-    credentials = JSON.parse(keyRaw);
+    credentials = JSON.parse(keyRaw.trim());
   }
 
   const auth = new google.auth.GoogleAuth({
