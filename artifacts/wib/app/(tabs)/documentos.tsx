@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Linking, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { GlassCard } from "@/components/GlassCard";
@@ -21,7 +21,17 @@ const TYPE_LABELS: Record<string, string> = {
   document: "Documento",
 };
 
-function FileCard({ file }: { file: { id: number; name: string; fileType: string; size?: number | null; aiSummary?: string | null; createdAt: string } }) {
+interface FileItem {
+  id: number;
+  name: string;
+  fileType: string;
+  url?: string | null;
+  size?: number | null;
+  aiSummary?: string | null;
+  createdAt: string;
+}
+
+function FileCard({ file }: { file: FileItem }) {
   const colors = useColors();
   const icon = TYPE_ICONS[file.fileType] ?? "file";
   const label = TYPE_LABELS[file.fileType] ?? file.fileType;
@@ -32,21 +42,41 @@ function FileCard({ file }: { file: { id: number; name: string; fileType: string
 
   const date = new Date(file.createdAt).toLocaleDateString("pt-BR");
 
+  const handleOpen = async () => {
+    if (!file.url) {
+      Alert.alert("Indisponível", "Este arquivo não possui URL de acesso.");
+      return;
+    }
+    const supported = await Linking.canOpenURL(file.url);
+    if (supported) {
+      await Linking.openURL(file.url);
+    } else {
+      Alert.alert("Erro", "Não foi possível abrir este arquivo.");
+    }
+  };
+
   return (
-    <GlassCard style={styles.fileCard}>
-      <View style={styles.fileRow}>
-        <View style={[styles.fileIcon, { backgroundColor: colors.surfaceContainerHigh }]}>
-          <Feather name={icon as any} size={20} color={colors.lime} />
+    <TouchableOpacity onPress={handleOpen} activeOpacity={0.75}>
+      <GlassCard style={styles.fileCard}>
+        <View style={styles.fileRow}>
+          <View style={[styles.fileIcon, { backgroundColor: colors.surfaceContainerHigh }]}>
+            <Feather name={icon as any} size={20} color={colors.lime} />
+          </View>
+          <View style={styles.fileInfo}>
+            <Text style={[styles.fileName, { color: colors.onSurface }]} numberOfLines={1}>{file.name}</Text>
+            <Text style={[styles.fileMeta, { color: colors.muted }]}>{label}{sizeStr ? ` · ${sizeStr}` : ""} · {date}</Text>
+            {file.aiSummary ? (
+              <Text style={[styles.fileSummary, { color: colors.onSurfaceVariant }]} numberOfLines={2}>{file.aiSummary}</Text>
+            ) : null}
+          </View>
+          <Feather
+            name={file.fileType === "audio" ? "play-circle" : "external-link"}
+            size={18}
+            color={colors.muted}
+          />
         </View>
-        <View style={styles.fileInfo}>
-          <Text style={[styles.fileName, { color: colors.onSurface }]} numberOfLines={1}>{file.name}</Text>
-          <Text style={[styles.fileMeta, { color: colors.muted }]}>{label} · {sizeStr} · {date}</Text>
-          {file.aiSummary ? (
-            <Text style={[styles.fileSummary, { color: colors.onSurfaceVariant }]} numberOfLines={2}>{file.aiSummary}</Text>
-          ) : null}
-        </View>
-      </View>
-    </GlassCard>
+      </GlassCard>
+    </TouchableOpacity>
   );
 }
 
@@ -140,7 +170,7 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 13, fontWeight: "500" as const },
   list: { paddingHorizontal: 20, paddingTop: 8 },
   fileCard: { padding: 14, marginBottom: 8 },
-  fileRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  fileRow: { flexDirection: "row", gap: 12, alignItems: "center" },
   fileIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   fileInfo: { flex: 1, gap: 4 },
   fileName: { fontSize: 15, fontWeight: "600" as const },
