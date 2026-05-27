@@ -59,6 +59,9 @@
   },
   "dependencies": {
     "expo-av": "^16.0.8",
-    "expo-document-picker": "^14.0.8"
+    "expo-background-fetch": "~14.0.9",
+    "expo-document-picker": "^14.0.8",
+    "expo-notifications": "~0.32.17",
+    "expo-task-manager": "~14.0.9"
   }
 }

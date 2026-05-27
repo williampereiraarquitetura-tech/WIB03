@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -10,6 +10,10 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { Audio } from "expo-av";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { showCaptureShortcut, hideCaptureShortcut } from "@/services/notifications";
+
+const SHORTCUT_KEY = "wib_capture_shortcut";
 
 type RecordingState = "idle" | "recording" | "processing";
 
@@ -19,10 +23,27 @@ export default function CapturaScreen() {
   const { upload, uploading } = useUpload();
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [lastResult, setLastResult] = useState<{ title: string; type: string } | null>(null);
+  const [shortcutEnabled, setShortcutEnabled] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
+
+  useEffect(() => {
+    AsyncStorage.getItem(SHORTCUT_KEY).then((v) => setShortcutEnabled(v === "1"));
+  }, []);
+
+  async function toggleShortcut() {
+    if (shortcutEnabled) {
+      await hideCaptureShortcut();
+      await AsyncStorage.setItem(SHORTCUT_KEY, "0");
+      setShortcutEnabled(false);
+    } else {
+      await showCaptureShortcut();
+      await AsyncStorage.setItem(SHORTCUT_KEY, "1");
+      setShortcutEnabled(true);
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
 
   async function startRecording() {
     try {
@@ -47,23 +68,31 @@ export default function CapturaScreen() {
 
     if (uri) {
       const result = await upload(uri, `audio_${Date.now()}.m4a`, "audio/m4a");
-      if (result) {
-        setLastResult({ title: result.title, type: result.type });
-        router.push("/inbox");
-      }
+      if (result) router.push("/inbox");
     }
     setRecordingState("idle");
   }
 
-  async function pickImage() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
-      quality: 0.8,
+  async function pickAudioFile() {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["audio/*", "application/octet-stream"],
+      copyToCacheDirectory: true,
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      const uploaded = await upload(asset.uri, asset.fileName ?? `img_${Date.now()}.jpg`, asset.mimeType ?? "image/jpeg");
+      setRecordingState("processing");
+      const uploaded = await upload(asset.uri, asset.name, asset.mimeType ?? "audio/mpeg");
       if (uploaded) router.push("/inbox");
+      setRecordingState("idle");
+    }
+  }
+
+  async function pickImage() {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: "images", quality: 0.8 });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      await upload(asset.uri, asset.fileName ?? `img_${Date.now()}.jpg`, asset.mimeType ?? "image/jpeg");
+      router.push("/inbox");
     }
   }
 
@@ -73,8 +102,8 @@ export default function CapturaScreen() {
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      const uploaded = await upload(asset.uri, `foto_${Date.now()}.jpg`, asset.mimeType ?? "image/jpeg");
-      if (uploaded) router.push("/inbox");
+      await upload(asset.uri, `foto_${Date.now()}.jpg`, asset.mimeType ?? "image/jpeg");
+      router.push("/inbox");
     }
   }
 
@@ -82,8 +111,8 @@ export default function CapturaScreen() {
     const result = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "*/*"], copyToCacheDirectory: true });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      const uploaded = await upload(asset.uri, asset.name, asset.mimeType ?? "application/octet-stream");
-      if (uploaded) router.push("/inbox");
+      await upload(asset.uri, asset.name, asset.mimeType ?? "application/octet-stream");
+      router.push("/inbox");
     }
   }
 
@@ -146,6 +175,14 @@ export default function CapturaScreen() {
           </GlassCard>
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={pickAudioFile} disabled={isProcessing} activeOpacity={0.85} style={styles.gridItem}>
+          <GlassCard style={styles.gridCard}>
+            <Feather name="headphones" size={28} color={colors.purpleLight} />
+            <Text style={[styles.gridLabel, { color: colors.onSurface }]}>Áudio salvo</Text>
+            <Text style={[styles.gridSub, { color: colors.muted }]}>MP3, M4A, WAV...</Text>
+          </GlassCard>
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={pickDocument} disabled={isProcessing} activeOpacity={0.85} style={styles.gridItem}>
           <GlassCard style={styles.gridCard}>
             <Feather name="file-text" size={28} color={colors.onSurfaceVariant} />
@@ -153,15 +190,32 @@ export default function CapturaScreen() {
             <Text style={[styles.gridSub, { color: colors.muted }]}>Qualquer formato</Text>
           </GlassCard>
         </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => router.push("/inbox")} disabled={isProcessing} activeOpacity={0.85} style={styles.gridItem}>
-          <GlassCard style={styles.gridCard}>
-            <Feather name="inbox" size={28} color={colors.lime} />
-            <Text style={[styles.gridLabel, { color: colors.onSurface }]}>Inbox</Text>
-            <Text style={[styles.gridSub, { color: colors.muted }]}>Ver capturas</Text>
-          </GlassCard>
-        </TouchableOpacity>
       </View>
+
+      {/* Capture Shortcut Notification toggle */}
+      {Platform.OS !== "web" ? (
+        <>
+          <Text style={[styles.sectionLabel, { color: colors.muted, marginTop: 28 }]}>ATALHO RÁPIDO</Text>
+          <TouchableOpacity onPress={toggleShortcut} activeOpacity={0.85}>
+            <GlassCard style={[styles.shortcutCard, { borderColor: shortcutEnabled ? colors.lime + "60" : colors.border }]}>
+              <View style={styles.shortcutRow}>
+                <View style={[styles.shortcutIcon, { backgroundColor: shortcutEnabled ? colors.lime + "20" : colors.surfaceContainerHigh }]}>
+                  <Feather name="bell" size={22} color={shortcutEnabled ? colors.lime : colors.muted} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.shortcutTitle, { color: colors.onSurface }]}>Notificação fixa de Capturar</Text>
+                  <Text style={[styles.shortcutSub, { color: colors.muted }]}>
+                    {shortcutEnabled ? "Ativa — aparece na barra de notificações" : "Toque para fixar na barra de notificações"}
+                  </Text>
+                </View>
+                <View style={[styles.toggle, { backgroundColor: shortcutEnabled ? colors.lime : colors.surfaceContainerHigh }]}>
+                  <View style={[styles.toggleDot, { transform: [{ translateX: shortcutEnabled ? 18 : 2 }], backgroundColor: shortcutEnabled ? colors.onLime : colors.muted }]} />
+                </View>
+              </View>
+            </GlassCard>
+          </TouchableOpacity>
+        </>
+      ) : null}
     </ScrollView>
   );
 }
@@ -181,4 +235,11 @@ const styles = StyleSheet.create({
   gridCard: { padding: 18, alignItems: "flex-start", gap: 8 },
   gridLabel: { fontSize: 16, fontWeight: "600" as const },
   gridSub: { fontSize: 13 },
+  shortcutCard: { padding: 16, borderWidth: 1 },
+  shortcutRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  shortcutIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  shortcutTitle: { fontSize: 15, fontWeight: "600" as const, marginBottom: 2 },
+  shortcutSub: { fontSize: 12, lineHeight: 16 },
+  toggle: { width: 42, height: 24, borderRadius: 12, justifyContent: "center" },
+  toggleDot: { width: 18, height: 18, borderRadius: 9, position: "absolute" },
 });
