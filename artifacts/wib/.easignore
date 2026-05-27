@@ -1,0 +1,11 @@
+# Ignore node_modules at root and other workspaces
+/node_modules
+../../node_modules
+../../artifacts/api-server
+../../artifacts/api-server/dist
+../../lib/db
+../../lib/api-client-react/node_modules
+**/.git
+**/*.log
+**/dist
+**/__pycache__
