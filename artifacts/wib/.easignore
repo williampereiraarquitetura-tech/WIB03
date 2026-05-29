@@ -1,11 +1,16 @@
-# Ignore node_modules at root and other workspaces
-/node_modules
-../../node_modules
+# Backend server (not needed for mobile build)
 ../../artifacts/api-server
-../../artifacts/api-server/dist
-../../lib/db
-../../lib/api-client-react/node_modules
+
+# Unused prototypes
+../../artifacts/mockup-sandbox
+
+# Build outputs
+**/dist
+**/.local
+**/uploads
+
+# Caches and logs
 **/.git
 **/*.log
-**/dist
-**/__pycache__
+**/.cache
+**/.expo
