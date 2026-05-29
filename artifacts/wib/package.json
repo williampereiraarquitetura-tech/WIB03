@@ -58,6 +58,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
     "expo-av": "^16.0.8",
     "expo-background-fetch": "~14.0.9",
     "expo-document-picker": "^14.0.8",

@@ -1,29 +1,32 @@
 import { db } from "@workspace/db";
 import { inboxItemsTable, projectsTable, tasksTable, timelineEventsTable, filesTable, peopleTable } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { Router } from "express";
 import { getOpenAIClient } from "../services/openaiClient.js";
 
 const router = Router();
 
 router.get("/today", async (req, res) => {
+  const uid = req.user.id;
+
   const [urgentTasks, pendingInboxCount, recentEvents, blockedProjects] = await Promise.all([
     db.select({ task: tasksTable, projectName: projectsTable.name })
       .from(tasksTable)
       .leftJoin(projectsTable, eq(tasksTable.projectId, projectsTable.id))
-      .where(eq(tasksTable.status, "pendente"))
+      .where(and(eq(tasksTable.userId, uid), eq(tasksTable.status, "pendente")))
       .orderBy(desc(tasksTable.createdAt))
       .limit(20),
-    db.select().from(inboxItemsTable).where(eq(inboxItemsTable.status, "pending")),
+    db.select().from(inboxItemsTable)
+      .where(and(eq(inboxItemsTable.userId, uid), eq(inboxItemsTable.status, "needs_review"))),
     db.select({ event: timelineEventsTable, projectName: projectsTable.name })
       .from(timelineEventsTable)
       .leftJoin(projectsTable, eq(timelineEventsTable.projectId, projectsTable.id))
+      .where(eq(projectsTable.userId, uid))
       .orderBy(desc(timelineEventsTable.createdAt))
       .limit(5),
-    db.select().from(projectsTable).where(eq(projectsTable.status, "bloqueado")),
+    db.select().from(projectsTable)
+      .where(and(eq(projectsTable.userId, uid), eq(projectsTable.status, "bloqueado"))),
   ]);
-
-  const urgentOnly = urgentTasks.slice(0, 20);
 
   let aiSummary = "";
   try {
@@ -31,16 +34,13 @@ router.get("/today", async (req, res) => {
     const context = `
 Projetos bloqueados: ${blockedProjects.length}
 Itens pendentes na inbox: ${pendingInboxCount.length}
-Tarefas urgentes: ${urgentOnly.map(({ task }) => task.title).join(", ") || "nenhuma"}
+Tarefas urgentes: ${urgentTasks.map(({ task }) => task.title).join(", ") || "nenhuma"}
     `.trim();
 
     const resp = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content: "Você é o WIB. Crie um resumo executivo do dia em 1-2 frases objetivas baseado no contexto.",
-        },
+        { role: "system", content: "Você é o WIB. Crie um resumo executivo do dia em 1-2 frases objetivas baseado no contexto." },
         { role: "user", content: context },
       ],
       max_tokens: 150,
@@ -50,47 +50,33 @@ Tarefas urgentes: ${urgentOnly.map(({ task }) => task.title).join(", ") || "nenh
     aiSummary = "Confira suas prioridades e inbox abaixo.";
   }
 
-  const payload = {
+  res.json({
     aiSummary,
-    urgentTasks: urgentOnly.map(({ task, projectName }) => ({
-      id: task.id,
-      projectId: task.projectId,
-      projectName: projectName ?? undefined,
-      title: task.title,
-      description: task.description,
-      priority: task.priority,
-      status: task.status,
-      dueDate: task.dueDate,
-      createdAt: task.createdAt.toISOString(),
+    urgentTasks: urgentTasks.map(({ task, projectName }) => ({
+      id: task.id, projectId: task.projectId, projectName: projectName ?? undefined,
+      title: task.title, description: task.description, priority: task.priority,
+      status: task.status, dueDate: task.dueDate, createdAt: task.createdAt.toISOString(),
     })),
     blockedProjects: blockedProjects.length,
     pendingInbox: pendingInboxCount.length,
     recentEvents: recentEvents.map(({ event, projectName }) => ({
-      id: event.id,
-      projectId: event.projectId,
-      projectName: projectName ?? undefined,
-      type: event.type,
-      title: event.title,
-      description: event.description,
+      id: event.id, projectId: event.projectId, projectName: projectName ?? undefined,
+      type: event.type, title: event.title, description: event.description,
       createdAt: event.createdAt.toISOString(),
     })),
-  };
-
-  res.json(payload);
+  });
 });
 
 router.post("/chat", async (req, res) => {
   const { message, history = [] } = req.body as { message: string; history?: { role: string; content: string }[] };
+  if (!message) { res.status(400).json({ error: "Mensagem é obrigatória" }); return; }
 
-  if (!message) {
-    res.status(400).json({ error: "Mensagem é obrigatória" });
-    return;
-  }
+  const uid = req.user.id;
 
   const [projects, tasks, people] = await Promise.all([
-    db.select().from(projectsTable).orderBy(desc(projectsTable.updatedAt)).limit(10),
-    db.select().from(tasksTable).where(eq(tasksTable.status, "pendente")).limit(10),
-    db.select().from(peopleTable).limit(10),
+    db.select().from(projectsTable).where(eq(projectsTable.userId, uid)).orderBy(desc(projectsTable.updatedAt)).limit(10),
+    db.select().from(tasksTable).where(and(eq(tasksTable.userId, uid), eq(tasksTable.status, "pendente"))).limit(10),
+    db.select().from(peopleTable).where(eq(peopleTable.userId, uid)).limit(10),
   ]);
 
   const context = `
@@ -100,37 +86,27 @@ PESSOAS: ${people.map((p) => `${p.name} (${p.role})`).join(", ") || "nenhuma"}
   `.trim();
 
   let aiResponse = "";
-  let suggestedActions: string[] = [];
+  const suggestedActions: string[] = [];
 
   try {
     const client = getOpenAIClient();
-    const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
-      {
-        role: "system",
-        content: `Você é o WIB, um assistente de segundo cérebro especializado em projetos urbanísticos, aprovações municipais e incorporações imobiliárias. Responda em português de forma objetiva e útil.
-
-CONTEXTO ATUAL:
-${context}`,
-      },
-      ...history.map((h) => ({ role: h.role as "user" | "assistant", content: h.content })),
-      { role: "user", content: message },
-    ];
-
     const resp = await client.chat.completions.create({
       model: "gpt-4o-mini",
-      messages,
+      messages: [
+        {
+          role: "system",
+          content: `Você é o WIB, um assistente de segundo cérebro especializado em projetos urbanísticos, aprovações municipais e incorporações imobiliárias. Responda em português de forma objetiva e útil.\n\nCONTEXTO ATUAL:\n${context}`,
+        },
+        ...history.map((h) => ({ role: h.role as "user" | "assistant", content: h.content })),
+        { role: "user", content: message },
+      ],
       max_tokens: 800,
     });
     aiResponse = resp.choices[0]?.message?.content ?? "Não foi possível processar sua pergunta.";
-
-    if (projects.length === 0) {
-      suggestedActions.push("Cadastrar primeiro projeto");
-    }
-    if (tasks.length > 3) {
-      suggestedActions.push("Ver tarefas urgentes");
-    }
-  } catch (err) {
-    aiResponse = "Desculpe, não foi possível processar sua pergunta no momento. Verifique a configuração da chave OpenAI.";
+    if (projects.length === 0) suggestedActions.push("Cadastrar primeiro projeto");
+    if (tasks.length > 3) suggestedActions.push("Ver tarefas urgentes");
+  } catch {
+    aiResponse = "Desculpe, não foi possível processar sua pergunta no momento.";
   }
 
   res.json({ message: aiResponse, suggestedActions });
@@ -138,18 +114,16 @@ ${context}`,
 
 router.get("/search", async (req, res) => {
   const { q } = req.query as { q: string };
-  if (!q) {
-    res.status(400).json({ error: "Parâmetro 'q' é obrigatório" });
-    return;
-  }
+  if (!q) { res.status(400).json({ error: "Parâmetro 'q' é obrigatório" }); return; }
 
+  const uid = req.user.id;
   const search = q.toLowerCase();
 
   const [allProjects, allPeople, allTasks, allFiles] = await Promise.all([
-    db.select().from(projectsTable),
-    db.select().from(peopleTable),
-    db.select().from(tasksTable),
-    db.select().from(filesTable),
+    db.select().from(projectsTable).where(eq(projectsTable.userId, uid)),
+    db.select().from(peopleTable).where(eq(peopleTable.userId, uid)),
+    db.select().from(tasksTable).where(eq(tasksTable.userId, uid)),
+    db.select().from(filesTable).where(eq(filesTable.userId, uid)),
   ]);
 
   const matchedProjects = allProjects.filter(
@@ -173,29 +147,23 @@ router.get("/search", async (req, res) => {
       matchedPeople.length > 0 ? `Pessoas: ${matchedPeople.map((p) => p.name).join(", ")}` : "",
       matchedTasks.length > 0 ? `Tarefas: ${matchedTasks.map((t) => t.title).join(", ")}` : "",
     ].filter(Boolean).join("\n");
-
     if (context) {
       const resp = await client.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
-          {
-            role: "system",
-            content: "Você é o WIB. Com base nos resultados encontrados, responda a pergunta do usuário de forma objetiva.",
-          },
+          { role: "system", content: "Você é o WIB. Com base nos resultados encontrados, responda a pergunta do usuário de forma objetiva." },
           { role: "user", content: `Pergunta: "${q}"\n\nResultados: ${context}` },
         ],
         max_tokens: 300,
       });
       aiAnswer = resp.choices[0]?.message?.content ?? "";
     }
-  } catch {
-    //
-  }
+  } catch { /* ignore */ }
 
   res.json({
     projects: matchedProjects.slice(0, 5).map((p) => ({
-      id: p.id, name: p.name, clientName: p.clientName, type: p.type, status: p.status, priority: p.priority,
-      description: p.description, aiSummary: p.aiSummary, progress: p.progress,
+      id: p.id, name: p.name, clientName: p.clientName, type: p.type, status: p.status,
+      priority: p.priority, description: p.description, aiSummary: p.aiSummary, progress: p.progress,
       createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(),
     })),
     people: matchedPeople.slice(0, 5).map((p) => ({

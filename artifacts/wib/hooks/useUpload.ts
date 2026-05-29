@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { API_URL } from "@/config/api";
+import { supabase } from "@/config/supabase";
 
 export interface UploadResult {
   id: number;
@@ -21,6 +22,9 @@ export function useUpload() {
     setUploading(true);
     setError(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Usuário não autenticado");
+
       const formData = new FormData();
       formData.append("file", { uri, name: fileName, type: mimeType } as any);
       if (projectId) formData.append("projectId", String(projectId));
@@ -28,14 +32,11 @@ export function useUpload() {
       const resp = await fetch(`${API_URL}/api/upload`, {
         method: "POST",
         body: formData,
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      if (!resp.ok) {
-        throw new Error(`Upload falhou: ${resp.status}`);
-      }
-
-      const data = await resp.json() as UploadResult;
-      return data;
+      if (!resp.ok) throw new Error(`Upload falhou: ${resp.status}`);
+      return await resp.json() as UploadResult;
     } catch (e: any) {
       setError(e?.message ?? "Erro no upload");
       return null;

@@ -1,3 +1,4 @@
+export * from "./users.js";
 export * from "./projects.js";
 export * from "./people.js";
 export * from "./tasks.js";
