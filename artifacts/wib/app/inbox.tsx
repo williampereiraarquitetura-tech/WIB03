@@ -15,11 +15,11 @@ export default function InboxScreen() {
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const { data: items, isLoading, refetch } = useListInboxItems({ status: "pending" });
+  const { data: items, isLoading, refetch } = useListInboxItems({ status: "needs_review" });
   const confirm = useConfirmInboxItem();
   const dismiss = useDismissInboxItem();
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: getListInboxItemsQueryKey({ status: "pending" }) });
+  const invalidate = () => qc.invalidateQueries({ queryKey: getListInboxItemsQueryKey({ status: "needs_review" }) });
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
