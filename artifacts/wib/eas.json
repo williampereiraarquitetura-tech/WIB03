@@ -11,7 +11,9 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://wib03.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://wib03.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://pgdamumcsxbingcfpghn.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnZGFtdW1jc3hiaW5nY2ZwZ2huIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNTkyODMsImV4cCI6MjA5NTYzNTI4M30.ZXXR7MWEMEayQi3rM6G4vryvsko2RITSXDA5OrpLBGQ"
       }
     },
     "production": {
