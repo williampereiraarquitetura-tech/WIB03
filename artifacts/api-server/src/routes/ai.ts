@@ -3,7 +3,7 @@ import { inboxItemsTable, projectsTable, tasksTable, timelineEventsTable, filesT
 import { eq, desc, and } from "drizzle-orm";
 import { Router } from "express";
 import { getOpenAIClient } from "../services/openaiClient.js";
-import { retrieveMemory } from "../services/memoryService.js";
+import { retrieveMemory, storeMemory } from "../services/memoryService.js";
 
 const router = Router();
 
@@ -191,6 +191,21 @@ router.get("/search", async (req, res) => {
     })),
     aiAnswer,
   });
+});
+
+// Save a chat message as persistent vector memory
+router.post("/memory", async (req, res) => {
+  const { text } = req.body as { text?: string };
+  if (!text?.trim()) { res.status(400).json({ error: "text é obrigatório" }); return; }
+
+  await storeMemory({
+    userId: req.user.id,
+    source: "chat_saved",
+    text: text.trim(),
+    metadata: { savedAt: new Date().toISOString() },
+  });
+
+  res.json({ ok: true });
 });
 
 export default router;
