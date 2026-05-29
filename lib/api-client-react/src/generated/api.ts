@@ -1489,6 +1489,24 @@ export const useDeleteProject = <TError = ErrorType<unknown>, TContext = unknown
 ): UseMutationResult<Awaited<ReturnType<typeof deleteProject>>, TError, { id: number }, TContext> =>
   useMutation(getDeleteProjectMutationOptions(options));
 
+// ─── deleteTask ───────────────────────────────────────────────────────────────
+export const deleteTask = async (id: number, options?: RequestInit): Promise<void> =>
+  customFetch<void>(`/tasks/${id}`, { ...options, method: 'DELETE' });
+
+export const getDeleteTaskMutationOptions = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteTask>>, TError, { id: number }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTask>>, TError, { id: number }, TContext> => {
+  const mutationKey = ['deleteTask'];
+  const { mutation: mutationOptions, request: requestOptions } = options ? (options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ? options : { ...options, mutation: { ...options.mutation, mutationKey } }) : { mutation: { mutationKey }, request: undefined };
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTask>>, { id: number }> = (props) => deleteTask(props.id, requestOptions);
+  return { mutationFn, ...mutationOptions };
+};
+
+export const useDeleteTask = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteTask>>, TError, { id: number }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof deleteTask>>, TError, { id: number }, TContext> =>
+  useMutation(getDeleteTaskMutationOptions(options));
+
 /**
  * @summary Intelligent search across all data
  */

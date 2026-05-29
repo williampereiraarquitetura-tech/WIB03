@@ -12,6 +12,7 @@ export const tasksTable = pgTable("tasks", {
   priority: text("priority").notNull().default("importante"),
   status: text("status").notNull().default("pendente"),
   dueDate: text("due_date"),
+  source: text("source").default("manual"), // "manual" | "ia"
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

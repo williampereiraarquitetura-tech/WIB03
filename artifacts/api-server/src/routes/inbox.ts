@@ -58,6 +58,7 @@ router.post("/:id/confirm", async (req, res) => {
       await db.insert(tasksTable).values({
         userId: req.user.id, projectId: projectId ?? null, title: taskTitle,
         priority: suggestions?.priority ?? "importante", status: "pendente",
+        source: "ia",
       });
     }
   }

@@ -6,6 +6,21 @@ import { z } from "zod";
 
 const router = Router();
 
+function taskRow(task: any, projectName?: string | null) {
+  return {
+    id: task.id,
+    projectId: task.projectId,
+    projectName: projectName ?? undefined,
+    title: task.title,
+    description: task.description,
+    priority: task.priority,
+    status: task.status,
+    dueDate: task.dueDate,
+    source: task.source ?? "manual",
+    createdAt: task.createdAt.toISOString(),
+  };
+}
+
 router.get("/", async (req, res) => {
   const { projectId, priority, status } = req.query;
   const uid = req.user.id;
@@ -22,18 +37,16 @@ router.get("/", async (req, res) => {
     .where(and(...conditions))
     .orderBy(desc(tasksTable.createdAt));
 
-  res.json(rows.map(({ task, projectName }) => ({
-    id: task.id, projectId: task.projectId, projectName: projectName ?? undefined,
-    title: task.title, description: task.description, priority: task.priority,
-    status: task.status, dueDate: task.dueDate, createdAt: task.createdAt.toISOString(),
-  })));
+  res.json(rows.map(({ task, projectName }) => taskRow(task, projectName)));
 });
 
 router.post("/", async (req, res) => {
   const parsed = insertTaskSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Dados inválidos" }); return; }
 
-  const [task] = await db.insert(tasksTable).values({ ...parsed.data, userId: req.user.id }).returning();
+  const [task] = await db.insert(tasksTable)
+    .values({ ...parsed.data, userId: req.user.id })
+    .returning();
 
   if (task!.projectId) {
     await db.insert(timelineEventsTable).values({
@@ -42,16 +55,15 @@ router.post("/", async (req, res) => {
     });
   }
 
-  res.status(201).json({
-    id: task!.id, projectId: task!.projectId, title: task!.title, description: task!.description,
-    priority: task!.priority, status: task!.status, dueDate: task!.dueDate,
-    createdAt: task!.createdAt.toISOString(),
-  });
+  res.status(201).json(taskRow(task!));
 });
 
 const updateSchema = z.object({
-  title: z.string().optional(), description: z.string().optional(),
-  priority: z.string().optional(), status: z.string().optional(), dueDate: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  priority: z.string().optional(),
+  status: z.string().optional(),
+  dueDate: z.string().nullable().optional(),
 });
 
 router.patch("/:id", async (req, res) => {
@@ -66,11 +78,19 @@ router.patch("/:id", async (req, res) => {
     .returning();
   if (!task) { res.status(404).json({ error: "Tarefa não encontrada" }); return; }
 
-  res.json({
-    id: task.id, projectId: task.projectId, title: task.title, description: task.description,
-    priority: task.priority, status: task.status, dueDate: task.dueDate,
-    createdAt: task.createdAt.toISOString(),
-  });
+  res.json(taskRow(task));
+});
+
+router.delete("/:id", async (req, res) => {
+  const id = parseInt(req.params["id"]!);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [task] = await db.delete(tasksTable)
+    .where(and(eq(tasksTable.id, id), eq(tasksTable.userId, req.user.id)))
+    .returning();
+  if (!task) { res.status(404).json({ error: "Tarefa não encontrada" }); return; }
+
+  res.status(204).end();
 });
 
 export default router;
