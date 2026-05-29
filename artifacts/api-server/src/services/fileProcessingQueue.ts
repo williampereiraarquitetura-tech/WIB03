@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { filesTable, inboxItemsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { classificationService, imageAnalysisService, pdfReaderService, transcriptionService } from "./index.js";
+import { storeMemoryChunks } from "./memoryService.js";
 import { logger } from "../lib/logger.js";
 
 export interface ProcessJob {
@@ -13,6 +14,7 @@ export interface ProcessJob {
   originalName: string;
   projectNames: string[];
   projectId: number | null;
+  userId: number;
   /** When true, the local file is a temp copy that should be deleted after processing. */
   isTemp: boolean;
 }
@@ -65,6 +67,22 @@ async function processJob(job: ProcessJob): Promise<void> {
     .update(filesTable)
     .set({ aiSummary: content.slice(0, 500) })
     .where(eq(filesTable.id, job.fileId));
+
+  // Store content as searchable vector memory chunks (non-blocking)
+  if (content && content.length > 20) {
+    storeMemoryChunks({
+      userId: job.userId,
+      source: `${job.fileType}_chunk`,
+      sourceId: job.fileId,
+      text: content,
+      metadata: {
+        fileType: job.fileType,
+        originalName: job.originalName,
+        projectId: job.projectId,
+        inboxItemId: job.inboxItemId,
+      },
+    }).catch((err) => logger.warn({ err, fileId: job.fileId }, "Memory chunk storage failed"));
+  }
 
   if (job.isTemp) {
     fs.promises.unlink(job.filePath).catch(() => {});

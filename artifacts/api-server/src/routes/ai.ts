@@ -3,6 +3,7 @@ import { inboxItemsTable, projectsTable, tasksTable, timelineEventsTable, filesT
 import { eq, desc, and } from "drizzle-orm";
 import { Router } from "express";
 import { getOpenAIClient } from "../services/openaiClient.js";
+import { retrieveMemory } from "../services/memoryService.js";
 
 const router = Router();
 
@@ -73,11 +74,16 @@ router.post("/chat", async (req, res) => {
 
   const uid = req.user.id;
 
-  const [projects, tasks, people] = await Promise.all([
+  const [projects, tasks, people, memories] = await Promise.all([
     db.select().from(projectsTable).where(eq(projectsTable.userId, uid)).orderBy(desc(projectsTable.updatedAt)).limit(10),
     db.select().from(tasksTable).where(and(eq(tasksTable.userId, uid), eq(tasksTable.status, "pendente"))).limit(10),
     db.select().from(peopleTable).where(eq(peopleTable.userId, uid)).limit(10),
+    retrieveMemory(uid, message, 5).catch(() => []),
   ]);
+
+  const memoryContext = memories.length > 0
+    ? memories.map((m) => `[${m.source.replace("_chunk", "")}] ${m.text}`).join("\n\n")
+    : "";
 
   const context = `
 PROJETOS: ${projects.map((p) => `${p.name} (${p.status})`).join(", ") || "nenhum"}
@@ -90,13 +96,18 @@ PESSOAS: ${people.map((p) => `${p.name} (${p.role})`).join(", ") || "nenhuma"}
 
   try {
     const client = getOpenAIClient();
+    const systemPrompt = [
+      "Você é o WIB, um assistente de segundo cérebro especializado em projetos urbanísticos, aprovações municipais e incorporações imobiliárias. Responda em português de forma objetiva e útil.",
+      "",
+      "CONTEXTO ATUAL:",
+      context,
+      ...(memoryContext ? ["", "MEMÓRIA RELEVANTE (de arquivos e capturas anteriores):", memoryContext] : []),
+    ].join("\n");
+
     const resp = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content: `Você é o WIB, um assistente de segundo cérebro especializado em projetos urbanísticos, aprovações municipais e incorporações imobiliárias. Responda em português de forma objetiva e útil.\n\nCONTEXTO ATUAL:\n${context}`,
-        },
+        { role: "system", content: systemPrompt },
         ...history.map((h) => ({ role: h.role as "user" | "assistant", content: h.content })),
         { role: "user", content: message },
       ],

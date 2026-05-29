@@ -87,7 +87,7 @@ router.post("/", upload.single("file"), async (req, res) => {
   enqueue({
     inboxItemId: inboxItem!.id, fileId: fileRecord!.id, filePath: file.path,
     fileType, originalName: safeOriginalName, projectNames: projects.map((p) => p.name),
-    projectId, isTemp,
+    projectId, userId: uid, isTemp,
   });
 
   res.json({
