@@ -92,6 +92,23 @@ TAREFAS PENDENTES: ${tasks.map((t) => `${t.title} [${t.priority}]`).join(", ") |
 PESSOAS: ${people.map((p) => `${p.name} (${p.role})`).join(", ") || "nenhuma"}
   `.trim();
 
+  // Build deduplicated source list from retrieved memories
+  const sources = memories.map((m) => {
+    const meta = m.metadata as Record<string, unknown> | null;
+    const originalName = meta?.originalName as string | undefined;
+    const label = originalName ?? m.memoryType;
+    return {
+      memoryType: m.memoryType,
+      source: m.source,
+      label,
+      preview: m.text.slice(0, 120),
+      distance: Number(m.distance.toFixed(3)),
+    };
+  }).filter((s, i, arr) =>
+    // deduplicate by label — keep first occurrence of each file name
+    arr.findIndex((x) => x.label === s.label) === i
+  );
+
   let aiResponse = "";
   const suggestedActions: string[] = [];
 
@@ -121,7 +138,7 @@ PESSOAS: ${people.map((p) => `${p.name} (${p.role})`).join(", ") || "nenhuma"}
     aiResponse = "Desculpe, não foi possível processar sua pergunta no momento.";
   }
 
-  res.json({ message: aiResponse, suggestedActions });
+  res.json({ message: aiResponse, suggestedActions, sources });
 });
 
 router.get("/search", async (req, res) => {

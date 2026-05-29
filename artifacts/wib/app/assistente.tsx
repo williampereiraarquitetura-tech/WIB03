@@ -14,10 +14,19 @@ import { supabase } from "@/config/supabase";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+interface ChatSource {
+  memoryType: string;
+  source: string;
+  label: string;     // file name or type label
+  preview: string;   // first 120 chars of chunk
+  distance: number;  // cosine distance — lower = more relevant
+}
+
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  sources?: ChatSource[];
   suggestedActions?: string[];
   saved?: boolean;
   ts: Date;
@@ -66,6 +75,75 @@ function MessageText({ text, color }: { text: string; color: string }) {
         <Text key={i} style={p.bold ? { fontWeight: "700" as const } : undefined}>{p.text}</Text>
       ))}
     </Text>
+  );
+}
+
+// ─── Source attribution ───────────────────────────────────────────────────────
+
+const SOURCE_ICONS: Record<string, string> = {
+  audio: "mic", documento: "file-text", factual: "info",
+  tarefa: "check-square", projeto: "folder", conversa: "message-circle",
+};
+
+const SOURCE_COLORS: Record<string, string> = {
+  audio: "#cbf157", documento: "#d9b9ff", factual: "#86efac",
+  tarefa: "#fbbf24", projeto: "#f9a8d4", conversa: "#94a3b8",
+};
+
+function SourcesSection({
+  sources, colors,
+}: {
+  sources: ChatSource[];
+  colors: ReturnType<typeof useColors>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (sources.length === 0) return null;
+
+  return (
+    <View style={srcStyles.container}>
+      {/* Header toggle */}
+      <TouchableOpacity
+        onPress={() => setExpanded((e) => !e)}
+        style={[srcStyles.header, { backgroundColor: colors.surfaceContainerHigh, borderColor: colors.border }]}
+        activeOpacity={0.75}
+      >
+        <Feather name="database" size={11} color={colors.muted} />
+        <Text style={[srcStyles.headerText, { color: colors.muted }]}>
+          {sources.length} fonte{sources.length > 1 ? "s" : ""} da memória
+        </Text>
+        <Feather name={expanded ? "chevron-up" : "chevron-down"} size={11} color={colors.muted} />
+      </TouchableOpacity>
+
+      {/* Expanded list */}
+      {expanded && (
+        <View style={[srcStyles.list, { backgroundColor: colors.surfaceContainer, borderColor: colors.border }]}>
+          {sources.map((src, i) => {
+            const color = SOURCE_COLORS[src.memoryType] ?? "#94a3b8";
+            const icon = SOURCE_ICONS[src.memoryType] ?? "circle";
+            const relevance = Math.round((1 - src.distance) * 100);
+            return (
+              <View key={i} style={[srcStyles.row, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
+                <View style={[srcStyles.iconWrap, { backgroundColor: color + "18" }]}>
+                  <Feather name={icon as any} size={11} color={color} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={srcStyles.labelRow}>
+                    <Text style={[srcStyles.label, { color: colors.onSurface }]} numberOfLines={1}>
+                      {src.label}
+                    </Text>
+                    <Text style={[srcStyles.relevance, { color: color }]}>{relevance}%</Text>
+                  </View>
+                  <Text style={[srcStyles.preview, { color: colors.muted }]} numberOfLines={2}>
+                    {src.preview}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -123,6 +201,11 @@ function MessageBubble({
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Source attribution */}
+        {!isUser && item.sources && item.sources.length > 0 && (
+          <SourcesSection sources={item.sources} colors={colors} />
+        )}
 
         {/* Suggested actions chips */}
         {!isUser && item.suggestedActions && item.suggestedActions.length > 0 && (
@@ -190,11 +273,12 @@ export default function AssistenteScreen() {
 
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-      const data = await resp.json() as { message: string; suggestedActions?: string[] };
+      const data = await resp.json() as { message: string; suggestedActions?: string[]; sources?: ChatSource[] };
       const botMsg: ChatMessage = {
         id: `a-${Date.now()}`,
         role: "assistant",
         content: data.message,
+        sources: data.sources?.filter((s) => s.label),
         suggestedActions: data.suggestedActions?.filter(Boolean),
         ts: new Date(),
       };
@@ -420,4 +504,30 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", marginLeft: 8,
   },
   hint: { fontSize: 10, textAlign: "center", marginTop: 6, marginBottom: 2 },
+});
+
+// ─── Source section styles ────────────────────────────────────────────────────
+
+const srcStyles = StyleSheet.create({
+  container: { gap: 2 },
+  header: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    borderRadius: 10, borderWidth: 1,
+    paddingHorizontal: 10, paddingVertical: 6,
+    alignSelf: "flex-start",
+  },
+  headerText: { fontSize: 11, fontWeight: "500" as const },
+  list: {
+    borderRadius: 10, borderWidth: 1,
+    overflow: "hidden",
+  },
+  row: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+  },
+  iconWrap: { width: 24, height: 24, borderRadius: 6, alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  label: { fontSize: 12, fontWeight: "600" as const, flex: 1 },
+  relevance: { fontSize: 10, fontWeight: "700" as const },
+  preview: { fontSize: 11, lineHeight: 15 },
 });
