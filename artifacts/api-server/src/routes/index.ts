@@ -24,6 +24,6 @@ router.use("/inbox", inboxRouter);
 router.use("/upload", uploadRouter);
 router.use("/files", filesRouter);
 router.use("/timeline", timelineRouter);
-router.use(aiRouter);
+router.use("/ai", aiRouter);
 
 export default router;

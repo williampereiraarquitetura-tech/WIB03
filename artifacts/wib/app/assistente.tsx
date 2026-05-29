@@ -255,6 +255,9 @@ export default function AssistenteScreen() {
           <Text style={[styles.sub, { color: colors.muted }]}>Assistente com memória vetorial</Text>
         </View>
 
+        <TouchableOpacity onPress={() => router.push("/memorias")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Feather name="cpu" size={18} color={colors.muted} />
+        </TouchableOpacity>
         {messages.length > 0 && (
           <TouchableOpacity onPress={clearChat} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Feather name="trash-2" size={18} color={colors.muted} />

@@ -39,6 +39,7 @@ function RootLayoutNav({ session }: { session: Session | null }) {
       <Stack.Screen name="inbox" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="tarefas" options={{ headerShown: false }} />
       <Stack.Screen name="assistente" options={{ headerShown: false }} />
+      <Stack.Screen name="memorias" options={{ headerShown: false }} />
       <Stack.Screen name="projeto/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="novo-projeto" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>

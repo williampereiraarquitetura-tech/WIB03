@@ -3,7 +3,8 @@ import { inboxItemsTable, projectsTable, tasksTable, timelineEventsTable, filesT
 import { eq, desc, and } from "drizzle-orm";
 import { Router } from "express";
 import { getOpenAIClient } from "../services/openaiClient.js";
-import { retrieveMemory, storeMemory } from "../services/memoryService.js";
+import { retrieveMemory, storeMemory, listMemories, deleteMemory, updateMemory, clearAllMemories } from "../services/memoryService.js";
+import type { MemoryType } from "@workspace/db/schema";
 
 const router = Router();
 
@@ -193,18 +194,58 @@ router.get("/search", async (req, res) => {
   });
 });
 
-// Save a chat message as persistent vector memory
+// POST /ai/memory — save a message as memory
 router.post("/memory", async (req, res) => {
-  const { text } = req.body as { text?: string };
+  const { text, memoryType } = req.body as { text?: string; memoryType?: MemoryType };
   if (!text?.trim()) { res.status(400).json({ error: "text é obrigatório" }); return; }
 
   await storeMemory({
     userId: req.user.id,
     source: "chat_saved",
     text: text.trim(),
+    memoryType: memoryType ?? "conversa",
+    important: true,
     metadata: { savedAt: new Date().toISOString() },
   });
 
+  res.json({ ok: true });
+});
+
+// GET /ai/memories — list user memories with optional type filter
+router.get("/memories", async (req, res) => {
+  const { type, limit, offset } = req.query as Record<string, string | undefined>;
+  const result = await listMemories(req.user.id, {
+    type: type as MemoryType | undefined,
+    limit: limit ? parseInt(limit) : 50,
+    offset: offset ? parseInt(offset) : 0,
+  });
+  res.json(result);
+});
+
+// DELETE /ai/memories/all — clear all memories for user
+router.delete("/memories/all", async (req, res) => {
+  const count = await clearAllMemories(req.user.id);
+  res.json({ deleted: count });
+});
+
+// DELETE /ai/memories/:id — delete a single memory
+router.delete("/memories/:id", async (req, res) => {
+  const id = parseInt(req.params["id"]!);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const ok = await deleteMemory(req.user.id, id);
+  if (!ok) { res.status(404).json({ error: "Memória não encontrada" }); return; }
+  res.status(204).end();
+});
+
+// PATCH /ai/memories/:id — update type or important flag
+router.patch("/memories/:id", async (req, res) => {
+  const id = parseInt(req.params["id"]!);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const { memoryType, important } = req.body as { memoryType?: MemoryType; important?: boolean };
+  const ok = await updateMemory(req.user.id, id, { memoryType, important });
+  if (!ok) { res.status(404).json({ error: "Memória não encontrada" }); return; }
   res.json({ ok: true });
 });
 
